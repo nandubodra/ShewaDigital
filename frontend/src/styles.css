@@ -1,0 +1,559 @@
+import { useEffect, useMemo, useState } from 'react';
+
+const translations = {
+  en: {
+    brand: 'ShewaDigital',
+    login: 'Login',
+    register: 'Register',
+    home: 'Home',
+    dashboard: 'Dashboard',
+    govtPortal: 'Government Portal',
+    service: 'Service',
+    myForms: 'My Applications',
+    language: 'Language',
+    welcome: 'Welcome to ShewaDigital',
+    userProfile: 'User Profile',
+    govtProfile: 'Government Profile',
+    appHistory: 'Application History',
+    status: 'Status',
+    pending: 'Pending',
+    inProcess: 'In Process',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    serviceList: 'Available Services',
+    submitApplication: 'Submit Application',
+    uploadDocuments: 'Upload Documents',
+    tracking: 'Tracking System',
+    office: 'Office',
+    department: 'Department',
+    district: 'District',
+    state: 'State',
+    contact: 'Contact',
+    allApplications: 'All Applications',
+    adminAction: 'Admin Action',
+    approve: 'Approve',
+    reject: 'Reject',
+    inReview: 'In Review',
+    userPanel: 'Citizen Portal',
+    govtPanel: 'Government Dashboard',
+    noApplications: 'No applications found.',
+    totalUsers: 'Total Users',
+    totalApplications: 'Total Applications',
+    pendingCount: 'Pending',
+    approvedCount: 'Approved',
+    reviewCount: 'In Process',
+    description: 'AI-assisted document processing for government services.'
+  },
+  hi: {
+    brand: 'शेवा डिजिटल',
+    login: 'लॉग इन',
+    register: 'रजिस्टर',
+    home: 'होम',
+    dashboard: 'डैशबोर्ड',
+    govtPortal: 'सरकारी पोर्टल',
+    service: 'सर्विस',
+    myForms: 'मेरी एप्लिकेशन',
+    language: 'भाषा',
+    welcome: 'शेवा डिजिटल में आपका स्वागत है',
+    userProfile: 'उपयोक्ता प्रोफाइल',
+    govtProfile: 'सरकारी प्रोफाइल',
+    appHistory: 'एप्लिकेशन इतिहास',
+    status: 'स्थिति',
+    pending: 'लंबित',
+    inProcess: 'प्रक्रिया में',
+    approved: 'स्वीकृत',
+    rejected: 'अस्वीकृत',
+    serviceList: 'उपलब्ध सेवाएं',
+    submitApplication: 'एप्लिकेशन जमा करें',
+    uploadDocuments: 'दस्तावेज अपलोड करें',
+    tracking: 'ट्रैकिंग सिस्टम',
+    office: 'कार्यालय',
+    department: 'विभाग',
+    district: 'जिला',
+    state: 'राज्य',
+    contact: 'संपर्क',
+    allApplications: 'सभी एप्लिकेशन',
+    adminAction: 'प्रशासनिक कार्रवाई',
+    approve: 'स्वीकृत करें',
+    reject: 'अस्वीकृत करें',
+    inReview: 'समीक्षा में',
+    userPanel: 'नागरिक पोर्टल',
+    govtPanel: 'सरकारी डैशबोर्ड',
+    noApplications: 'कोई एप्लिकेशन नहीं मिला।',
+    totalUsers: 'कुल उपयोगकर्ता',
+    totalApplications: 'कुल एप्लिकेशन',
+    pendingCount: 'लंबित',
+    approvedCount: 'स्वीकृत',
+    reviewCount: 'प्रक्रिया में',
+    description: 'सरकारी सेवाओं के लिए AI-सहायता वाला दस्तावेज प्रसंस्करण।'
+  }
+};
+
+const defaultUser = {
+  id: 'demo-user',
+  name: 'Rahul Kumar',
+  email: 'user@shewadigital.in',
+  phone: '9876543210',
+  aadhaar: 'XXXX XXXX 4821',
+  address: 'Boring Road, Patna, Bihar',
+  state: 'Bihar',
+  district: 'Patna',
+  role: 'user'
+};
+
+const defaultGovt = {
+  orgName: 'Ministry of citizen services',
+  department: 'Digital Governance Division',
+  officeName: 'State Service Portal',
+  officeLocation: 'Patna, Bihar',
+  phone: '+91 9123456789',
+  email: 'admin@shewadigital.in',
+  website: 'https://shewadigital.gov.in'
+};
+
+function App() {
+  const [lang, setLang] = useState('en');
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('shewa-user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [govtProfile, setGovtProfile] = useState(defaultGovt);
+  const [services, setServices] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [dashboard, setDashboard] = useState(null);
+  const [authMode, setAuthMode] = useState('login');
+  const [form, setForm] = useState({
+    name: '',
+    email: 'user@shewadigital.in',
+    phone: '',
+    password: 'password123',
+    aadhaar: '',
+    address: '',
+    state: '',
+    district: ''
+  });
+  const [selectedService, setSelectedService] = useState(null);
+  const [appForm, setAppForm] = useState({});
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [message, setMessage] = useState('');
+
+  const t = translations[lang];
+
+  useEffect(() => {
+    fetchServices();
+    fetchGovtProfile();
+    fetchDashboard();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadApplications(user.email);
+      localStorage.setItem('shewa-user', JSON.stringify(user));
+    }
+  }, [user]);
+
+  const userApps = useMemo(() => {
+    return applications.filter(item => item.userEmail === user?.email);
+  }, [applications, user]);
+
+  async function fetchServices() {
+    const res = await fetch('/api/services');
+    const data = await res.json();
+    setServices(data);
+    if (data[0]) setSelectedService(data[0]);
+  }
+
+  async function fetchGovtProfile() {
+    const res = await fetch('/api/govt-profile');
+    const data = await res.json();
+    setGovtProfile(data);
+  }
+
+  async function fetchDashboard() {
+    const res = await fetch('/api/dashboard');
+    const data = await res.json();
+    setDashboard(data);
+  }
+
+  async function loadApplications(email) {
+    if (!email) return;
+    const res = await fetch(`/api/applications?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    setApplications(data || []);
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: form.email, password: form.password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage(data.message || 'Login failed');
+      return;
+    }
+    setUser(data.user);
+    setMessage('Login successful');
+  }
+
+  async function handleRegister(e) {
+    e.preventDefault();
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        aadhaar: form.aadhaar,
+        address: form.address,
+        state: form.state,
+        district: form.district
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage(data.message || 'Registration failed');
+      return;
+    }
+    setMessage('Registration successful. You can now login.');
+    setAuthMode('login');
+  }
+
+  async function handleFileUpload(event) {
+    const files = Array.from(event.target.files || []);
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    setUploadedFiles(data.files || []);
+    setMessage('Documents uploaded successfully');
+  }
+
+  async function submitApplication() {
+    if (!user || !selectedService) return;
+    const payload = {
+      userEmail: user.email,
+      serviceId: selectedService.id,
+      serviceName: selectedService.name,
+      formData: appForm,
+      documents: uploadedFiles
+    };
+
+    const res = await fetch('/api/applications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage(data.message || 'Application submission failed');
+      return;
+    }
+    setMessage('Application submitted successfully');
+    loadApplications(user.email);
+    fetchDashboard();
+    setAppForm({});
+    setUploadedFiles([]);
+  }
+
+  async function updateStatus(applicationId, status) {
+    const res = await fetch(`/api/applications/${applicationId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, note: `Updated by government office: ${status}` })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage(data.message || 'Status update failed');
+      return;
+    }
+    setMessage(`Application ${status}`);
+    loadApplications(user?.email || 'user@shewadigital.in');
+    fetchDashboard();
+  }
+
+  const statusMap = {
+    pending: t.pending,
+    in_process: t.inProcess,
+    approved: t.approved,
+    rejected: t.rejected
+  };
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">{t.brand}</div>
+        <nav className="nav">
+          <button>{t.home}</button>
+          <button>{t.dashboard}</button>
+          <button>{t.govtPortal}</button>
+        </nav>
+        <div className="actions">
+          <select value={lang} onChange={(e) => setLang(e.target.value)}>
+            <option value="en">English</option>
+            <option value="hi">हिंदी</option>
+          </select>
+          {user ? (
+            <>
+              <span className="user-pill">{user.name}</span>
+              <button className="secondary" onClick={() => { setUser(null); localStorage.removeItem('shewa-user'); }}>Logout</button>
+            </>
+          ) : (
+            <button className="primary" onClick={() => setAuthMode('login')}>{t.login}</button>
+          )}
+        </div>
+      </header>
+
+      {!user ? (
+        <main className="auth-layout">
+          <section className="hero-card">
+            <p className="eyebrow">{t.welcome}</p>
+            <h1>{t.description}</h1>
+            <div className="feature-grid">
+              <div>
+                <strong>AI Form Fill</strong>
+                <span>Auto-capture from uploaded documents.</span>
+              </div>
+              <div>
+                <strong>{t.tracking}</strong>
+                <span>Live status of each application.</span>
+              </div>
+              <div>
+                <strong>{t.govtProfile}</strong>
+                <span>Government authorized review and approval.</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="auth-card">
+            <div className="toggle-row">
+              <button className={authMode === 'login' ? 'active' : ''} onClick={() => setAuthMode('login')}>{t.login}</button>
+              <button className={authMode === 'register' ? 'active' : ''} onClick={() => setAuthMode('register')}>{t.register}</button>
+            </div>
+
+            {authMode === 'login' ? (
+              <form onSubmit={handleLogin} className="stack-form">
+                <label>
+                  Email
+                  <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </label>
+                <label>
+                  Password
+                  <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                </label>
+                <button type="submit" className="primary full">{t.login}</button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="stack-form">
+                <label>
+                  Full Name
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </label>
+                <label>
+                  Email
+                  <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </label>
+                <label>
+                  Phone
+                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                </label>
+                <label>
+                  Password
+                  <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                </label>
+                <label>
+                  Aadhaar
+                  <input value={form.aadhaar} onChange={(e) => setForm({ ...form, aadhaar: e.target.value })} />
+                </label>
+                <label>
+                  Address
+                  <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                </label>
+                <label>
+                  State
+                  <input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                </label>
+                <label>
+                  District
+                  <input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} />
+                </label>
+                <button type="submit" className="primary full">{t.register}</button>
+              </form>
+            )}
+            {message && <div className="message">{message}</div>}
+          </section>
+        </main>
+      ) : (
+        <main className="dashboard-layout">
+          <aside className="sidebar">
+            <h3>{user.role === 'government' ? t.govtPanel : t.userPanel}</h3>
+            <div className="profile-box">
+              <strong>{user.name}</strong>
+              <span>{user.email}</span>
+              <small>{user.phone}</small>
+            </div>
+            {user.role === 'government' ? (
+              <div className="nav-stack">
+                <button onClick={() => fetchDashboard()}>{t.dashboard}</button>
+                <button onClick={() => loadApplications('user@shewadigital.in')}>{t.allApplications}</button>
+              </div>
+            ) : (
+              <div className="nav-stack">
+                <button onClick={() => fetchDashboard()}>{t.dashboard}</button>
+                <button onClick={() => loadApplications(user.email)}>{t.myForms}</button>
+              </div>
+            )}
+          </aside>
+
+          <section className="content-panel">
+            <div className="summary-grid">
+              <div className="card">
+                <span>{t.totalUsers}</span>
+                <strong>{dashboard?.totalUsers ?? 0}</strong>
+              </div>
+              <div className="card">
+                <span>{t.totalApplications}</span>
+                <strong>{dashboard?.totalApplications ?? 0}</strong>
+              </div>
+              <div className="card warning">
+                <span>{t.pendingCount}</span>
+                <strong>{dashboard?.pending ?? 0}</strong>
+              </div>
+              <div className="card success">
+                <span>{t.approvedCount}</span>
+                <strong>{dashboard?.approved ?? 0}</strong>
+              </div>
+            </div>
+
+            <div className="two-column">
+              <div className="panel">
+                <h3>{t.userProfile}</h3>
+                <ul className="info-list">
+                  <li><span>Name</span><strong>{user.name}</strong></li>
+                  <li><span>Email</span><strong>{user.email}</strong></li>
+                  <li><span>Phone</span><strong>{user.phone}</strong></li>
+                  <li><span>Aadhaar</span><strong>{user.aadhaar}</strong></li>
+                  <li><span>{t.state}</span><strong>{user.state}</strong></li>
+                  <li><span>{t.district}</span><strong>{user.district}</strong></li>
+                </ul>
+              </div>
+
+              <div className="panel">
+                <h3>{t.govtProfile}</h3>
+                <ul className="info-list">
+                  <li><span>{t.office}</span><strong>{govtProfile.officeName}</strong></li>
+                  <li><span>{t.department}</span><strong>{govtProfile.department}</strong></li>
+                  <li><span>{t.state}</span><strong>{govtProfile.officeLocation}</strong></li>
+                  <li><span>{t.contact}</span><strong>{govtProfile.phone}</strong></li>
+                  <li><span>Email</span><strong>{govtProfile.email}</strong></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="panel">
+              <h3>{t.serviceList}</h3>
+              <div className="service-grid">
+                {services.map(service => (
+                  <button key={service.id} className={`service-card ${selectedService?.id === service.id ? 'selected' : ''}`} onClick={() => setSelectedService(service)}>
+                    <strong>{service.name}</strong>
+                    <small>{service.fee} • {service.time}</small>
+                  </button>
+                ))}
+              </div>
+
+              {selectedService && (
+                <div className="application-box">
+                  <h4>{selectedService.name}</h4>
+                  <p>{selectedService.eligibility}</p>
+                  <div className="fields">
+                    {selectedService.docs.map(item => (
+                      <label key={item}>
+                        {item}
+                        <input value={appForm[item] || ''} onChange={(e) => setAppForm({ ...appForm, [item]: e.target.value })} />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="upload-box">
+                    <label>
+                      {t.uploadDocuments}
+                      <input type="file" multiple onChange={handleFileUpload} />
+                    </label>
+                    {uploadedFiles.length > 0 && (
+                      <ul>
+                        {uploadedFiles.map(file => (
+                          <li key={file.path}>{file.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <button className="primary" onClick={submitApplication}>{t.submitApplication}</button>
+                </div>
+              )}
+            </div>
+
+            <div className="panel">
+              <h3>{t.appHistory}</h3>
+              {userApps.length === 0 ? (
+                <p>{t.noApplications}</p>
+              ) : (
+                <div className="application-list">
+                  {userApps.map(app => (
+                    <div className="application-item" key={app.id}>
+                      <div>
+                        <strong>{app.serviceName}</strong>
+                        <small>{app.id}</small>
+                      </div>
+                      <span className={`status-badge ${app.status}`}>{statusMap[app.status] || app.status}</span>
+                      <div className="history">
+                        {app.history?.map((entry, idx) => (
+                          <small key={idx}>{entry.status} • {new Date(entry.createdAt).toLocaleString()}</small>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {user.role === 'government' && (
+              <div className="panel">
+                <h3>{t.allApplications}</h3>
+                {applications.length === 0 ? (
+                  <p>{t.noApplications}</p>
+                ) : (
+                  <div className="application-list">
+                    {applications.map(app => (
+                      <div className="application-item admin" key={app.id}>
+                        <div>
+                          <strong>{app.serviceName}</strong>
+                          <small>{app.userEmail}</small>
+                        </div>
+                        <span className={`status-badge ${app.status}`}>{statusMap[app.status] || app.status}</span>
+                        <div className="btn-row">
+                          <button className="secondary" onClick={() => updateStatus(app.id, 'in_process')}>{t.inReview}</button>
+                          <button className="secondary" onClick={() => updateStatus(app.id, 'approved')}>{t.approve}</button>
+                          <button className="danger" onClick={() => updateStatus(app.id, 'rejected')}>{t.reject}</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        </main>
+      )}
+    </div>
+  );
+}
+
+export default App;
