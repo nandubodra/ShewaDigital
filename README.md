@@ -1,53 +1,42 @@
-# ShewaDigital Full Stack
+# ShewaDigital
 
-A bilingual government services platform for AI-assisted application processing, document verification, and status tracking.
+ShewaDigital is a bilingual government service portal built with Next.js, Tailwind CSS, and local API data storage. It supports:
 
-## Features
+- Hindi/English switching
+- User and government profile sections
+- Application tracking workflow
+- Document upload simulation
+- Government approval dashboard
+- Service-based form submission flow
 
-- Hindi and English language support
-- User and government profile views
-- Application history and tracking
-- Status workflow: pending, in process, approved, rejected
-- Document upload handling
-- Service application forms
-- Government dashboard for approvals
+## Stack
 
-## Tech stack
-
-- Frontend: React + Vite
-- Backend: Node.js + Express
-- Data storage: JSON file persistence
-- Uploads: multer
+- Frontend: Next.js + React + Tailwind CSS
+- Backend: Next.js API routes
+- Storage: Local JSON file persistence for demo mode
+- Optional production upgrades: PostgreSQL + Supabase Auth + Cloudinary/S3 + OpenAI/Claude OCR
 
 ## Run locally
 
 1. Install dependencies:
    npm install
 
-2. Start the app:
+2. Start dev server:
    npm run dev
 
-3. Open the frontend in browser:
-   http://localhost:5173
+3. Open app:
+   http://localhost:3000
 
-4. Backend API:
-   http://localhost:4000/api/health
+## Demo credentials
 
-## Demo accounts
-
-User:
+Citizen account:
 - Email: user@shewadigital.in
 - Password: password123
 
-Government admin:
+Government account:
 - Email: admin@shewadigital.in
 - Password: admin123
 
-## Project structure
-
-- frontend/ - React UI
-- backend/ - Express API and data storage
-
 ## Notes
 
-This project is built as a functioning demo for a government service portal. It is configured for local development and can be extended to a real database and authentication system later.
+This is a full working demo website. For production, replace local JSON storage with PostgreSQL and add Supabase Auth, S3/Cloudinary upload, and AI OCR services.

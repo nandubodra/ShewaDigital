@@ -1,7 +1,7 @@
 node_modules
-frontend/dist
-backend/uploads/*
-backend/data/*.json
-!backend/data/.gitkeep
+.next
+out
+.env.local
+.env
 .DS_Store
-npm-debug.log*
+uploads
