@@ -1,148 +1,64 @@
-"use client";
+import { FileText, ShieldCheck, Sparkles, ClipboardList, User, Building2, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
 
-import { useEffect, useMemo, useState } from 'react';
-
-type Lang = 'en' | 'hi';
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  aadhaar: string;
-  address: string;
-  state: string;
-  district: string;
-  role: 'user' | 'government';
-};
-
-type Service = {
-  id: string;
-  name: string;
-  fee: string;
-  time: string;
-  eligibility: string;
-  docs: string[];
-};
-
-type Application = {
-  id: string;
-  userEmail: string;
-  serviceId: string;
-  serviceName: string;
-  status: 'pending' | 'in_process' | 'approved' | 'rejected';
-  priority: string;
-  createdAt: string;
-  updatedAt: string;
-  formData: Record<string, string>;
-  documents: Array<{ name: string; path: string }>;
-  history: Array<{ status: string; note: string; createdAt: string }>;
-};
-
-const translations = {
-  en: {
-    brand: 'ShewaDigital',
-    description: 'AI-powered citizen service portal for government documents and approvals.',
-    login: 'Login',
-    register: 'Register',
-    home: 'Home',
-    dashboard: 'Dashboard',
-    service: 'Services',
-    profile: 'Profile',
-    government: 'Government Portal',
-    myApplications: 'My Applications',
-    status: 'Status',
-    allApplications: 'All Applications',
-    uploadDocuments: 'Upload Documents',
-    submit: 'Submit Application',
-    pending: 'Pending',
-    inProcess: 'In Process',
-    approved: 'Approved',
-    rejected: 'Rejected',
-    totalUsers: 'Total users',
-    totalApplications: 'Total applications',
-    approvalQueue: 'Approval queue',
-    welcome: 'Welcome to ShewaDigital',
-    noApplication: 'No applications found.',
-    govtOffice: 'Government Office',
-    contact: 'Contact',
-    district: 'District',
-    state: 'State',
-    track: 'Track application',
-    citizenPortal: 'Citizen Portal',
-    adminPortal: 'Government Dashboard',
-    logout: 'Logout'
+const defaultServices = [
+  {
+    id: 'pan-card',
+    name: 'PAN Card',
+    fee: '₹107',
+    time: '15-20 days',
+    eligibility: 'Any Indian citizen aged 18+ or guardian for minors.',
+    docs: ['Aadhaar card', 'Passport photo', 'DOB proof', 'Address proof']
   },
-  hi: {
-    brand: 'शेवा डिजिटल',
-    description: 'सरकारी दस्तावेज़ और स्वीकृति के लिए AI-संचालित नागरिक सेवा पोर्टल।',
-    login: 'लॉगिन',
-    register: 'रजिस्टर',
-    home: 'होम',
-    dashboard: 'डैशबोर्ड',
-    service: 'सेवाएं',
-    profile: 'प्रोफाइल',
-    government: 'सरकारी पोर्टल',
-    myApplications: 'मेरी आवेदन सूची',
-    status: 'स्थिति',
-    allApplications: 'सभी आवेदन',
-    uploadDocuments: 'दस्तावेज़ अपलोड करें',
-    submit: 'आवेदन जमा करें',
-    pending: 'लंबित',
-    inProcess: 'प्रक्रिया में',
-    approved: 'स्वीकृत',
-    rejected: 'अस्वीकृत',
-    totalUsers: 'कुल उपयोगकर्ता',
-    totalApplications: 'कुल आवेदन',
-    approvalQueue: 'स्वीकृति पंक्ति',
-    welcome: 'शेवा डिजिटल में आपका स्वागत है',
-    noApplication: 'कोई आवेदन नहीं मिला।',
-    govtOffice: 'सरकारी कार्यालय',
-    contact: 'संपर्क',
-    district: 'जिला',
-    state: 'राज्य',
-    track: 'आवेदन ट्रैक करें',
-    citizenPortal: 'नागरिक पोर्टल',
-    adminPortal: 'सरकारी डैशबोर्ड',
-    logout: 'लॉगआउट'
+  {
+    id: 'voter-id',
+    name: 'Voter ID Card',
+    fee: 'Free',
+    time: '30 days',
+    eligibility: 'Indian citizen aged 18 years or above.',
+    docs: ['Aadhaar card', 'Passport photo', 'Age proof', 'Address proof']
+  },
+  {
+    id: 'income-certificate',
+    name: 'Income Certificate',
+    fee: '₹30',
+    time: '7-15 days',
+    eligibility: 'Resident of the state where the certificate is applied.',
+    docs: ['Aadhaar card', 'Ration card', 'Income proof', 'Address proof']
+  },
+  {
+    id: 'driving-license',
+    name: 'Driving License',
+    fee: '₹200-1000',
+    time: '15-30 days',
+    eligibility: '16+ for gearless vehicles, 18+ for gear vehicles.',
+    docs: ['Aadhaar card', 'Passport photo', 'Learner license', 'Address proof']
   }
-} as const;
+];
 
-const defaultUser: User = {
-  id: 'demo-user',
-  name: 'Rahul Kumar',
-  email: 'user@shewadigital.in',
-  phone: '9876543210',
-  aadhaar: 'XXXX XXXX 4821',
-  address: 'Boring Road, Patna, Bihar',
-  state: 'Bihar',
-  district: 'Patna',
-  role: 'user'
-};
-
-const defaultGovt = {
-  orgName: 'Ministry of Citizen Services',
-  officeName: 'Digital Governance Division',
-  officeLocation: 'Patna, Bihar',
-  phone: '+91 9123456789',
-  email: 'admin@shewadigital.in',
-  website: 'https://shewadigital.gov.in'
+const statusColors: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-700',
+  in_process: 'bg-blue-100 text-blue-700',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700'
 };
 
 export default function HomePage() {
-  const [lang, setLang] = useState<Lang>('en');
-  const [user, setUser] = useState<User | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [govtProfile, setGovtProfile] = useState(defaultGovt);
-  const [dashboard, setDashboard] = useState({ totalUsers: 0, totalApplications: 0, pending: 0, in_process: 0, approved: 0, rejected: 0 });
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [appForm, setAppForm] = useState<Record<string, string>>({});
-  const [uploadFiles, setUploadFiles] = useState<Array<{ name: string; path: string }>>([]);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [lang, setLang] = useState<'en' | 'hi'>('en');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [services, setServices] = useState(defaultServices);
+  const [selectedService, setSelectedService] = useState(defaultServices[0]);
   const [message, setMessage] = useState('');
-  const [loginData, setLoginData] = useState({ email: 'user@shewadigital.in', password: 'password123' });
-  const [registerData, setRegisterData] = useState({
+  const [uploads, setUploads] = useState<Array<{ name: string; path: string }>>([]);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+
+  const [loginForm, setLoginForm] = useState({
+    email: 'user@shewadigital.in',
+    password: 'password123'
+  });
+
+  const [registerForm, setRegisterForm] = useState({
     name: '',
     email: '',
     phone: '',
@@ -153,91 +69,71 @@ export default function HomePage() {
     district: ''
   });
 
-  const t = translations[lang];
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem('shewadigital-user');
-    if (saved) {
-      setUser(JSON.parse(saved));
-    } else {
-      setUser(defaultUser);
+  const t = {
+    en: {
+      brand: 'ShewaDigital',
+      subtitle: 'AI-powered public service portal',
+      login: 'Login',
+      register: 'Register',
+      services: 'Services',
+      tracker: 'Application Tracker',
+      govt: 'Government Portal',
+      welcome: 'Welcome to ShewaDigital',
+      support: 'Upload docs, auto-fill fields, and track application status'
+    },
+    hi: {
+      brand: 'शेवा डिजिटल',
+      subtitle: 'AI-संचालित सार्वजनिक सेवा पोर्टल',
+      login: 'लॉगिन',
+      register: 'रजिस्टर',
+      services: 'सेवाएं',
+      tracker: 'एप्लिकेशन ट्रैकिंग',
+      govt: 'सरकारी पोर्टल',
+      welcome: 'शेवा डिजिटल में आपका स्वागत है',
+      support: 'दस्तावेज अपलोड करें, फॉर्म ऑटो-भरे, और स्थिति देखें'
     }
-    loadServices();
-    loadGovtProfile();
-    loadDashboard();
-  }, []);
+  }[lang];
 
-  useEffect(() => {
-    if (user) {
-      window.localStorage.setItem('shewadigital-user', JSON.stringify(user));
-      loadApplications(user.email);
-    }
-  }, [user]);
-
-  const visibleApps = useMemo(() => {
-    if (!user) return [];
-    return applications.filter((app) => app.userEmail === user.email);
-  }, [applications, user]);
-
-  async function loadServices() {
-    const res = await fetch('/api/services');
-    const data = await res.json();
-    setServices(data);
-    setSelectedService(data[0] ?? null);
-  }
-
-  async function loadGovtProfile() {
-    const res = await fetch('/api/govt-profile');
-    const data = await res.json();
-    setGovtProfile(data);
-  }
-
-  async function loadDashboard() {
-    const res = await fetch('/api/dashboard');
-    const data = await res.json();
-    setDashboard(data);
-  }
-
-  async function loadApplications(email: string) {
-    const res = await fetch(`/api/applications?email=${encodeURIComponent(email)}`);
-    const data = await res.json();
-    setApplications(data || []);
-  }
-
-  async function handleLogin(e: React.FormEvent) {
+  async function onLogin(e: React.FormEvent) {
     e.preventDefault();
+
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(loginData)
+      body: JSON.stringify(loginForm)
     });
+
     const data = await res.json();
     if (!res.ok) {
-      setMessage(data.message || 'Login failed');
+      setMessage(data.error || 'Login failed');
       return;
     }
+
     setUser(data.user);
-    setMessage('Logged in successfully');
+    setMessage('Login successful');
   }
 
-  async function handleRegister(e: React.FormEvent) {
+  async function onRegister(e: React.FormEvent) {
     e.preventDefault();
+
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(registerData)
+      body: JSON.stringify(registerForm)
     });
+
     const data = await res.json();
     if (!res.ok) {
-      setMessage(data.message || 'Registration failed');
+      setMessage(data.error || 'Registration failed');
       return;
     }
+
     setMessage('Registration successful. Please login.');
-    setAuthMode('login');
+    setMode('login');
   }
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
+    const files = Array.from(event.target.files || []);
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
 
@@ -245,225 +141,224 @@ export default function HomePage() {
       method: 'POST',
       body: formData
     });
+
     const data = await res.json();
-    setUploadFiles(data.files ?? []);
-    setMessage('Documents uploaded successfully.');
+    if (!res.ok) {
+      setMessage(data.error || 'Upload failed');
+      return;
+    }
+
+    setUploads(data.files || []);
+    setMessage('Documents uploaded successfully');
   }
 
-  async function submitApplication() {
-    if (!user || !selectedService) return;
-
-    const payload = {
-      userEmail: user.email,
-      serviceId: selectedService.id,
-      serviceName: selectedService.name,
-      formData: appForm,
-      documents: uploadFiles
-    };
+  async function handleSubmitApplication() {
+    if (!user) {
+      setMessage('Please login first');
+      return;
+    }
 
     const res = await fetch('/api/applications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        userId: user.email,
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        formData,
+        uploadedFiles: uploads
+      })
     });
-    const data = await res.json();
 
+    const data = await res.json();
     if (!res.ok) {
-      setMessage(data.message || 'Application failed');
+      setMessage(data.error || 'Application submission failed');
       return;
     }
 
     setMessage('Application submitted successfully');
-    setAppForm({});
-    setUploadFiles([]);
-    loadApplications(user.email);
-    loadDashboard();
+    setFormData({});
+    setUploads([]);
   }
-
-  async function adminAction(applicationId: string, status: 'in_process' | 'approved' | 'rejected') {
-    const res = await fetch(`/api/applications/${applicationId}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, note: `Updated by government office: ${status}` })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setMessage(data.message || 'Status update failed');
-      return;
-    }
-    setMessage(`Application marked as ${status}`);
-    loadApplications(user?.email ?? 'user@shewadigital.in');
-    loadDashboard();
-  }
-
-  const statusLabels = {
-    pending: t.pending,
-    in_process: t.inProcess,
-    approved: t.approved,
-    rejected: t.rejected
-  } as const;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-7xl flex items-center justify-between px-6 py-4">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="text-2xl font-bold text-blue-700">{t.brand}</div>
           <nav className="hidden gap-6 md:flex">
-            <button className="text-sm font-medium">{t.home}</button>
-            <button className="text-sm font-medium">{t.dashboard}</button>
-            <button className="text-sm font-medium">{t.government}</button>
+            <button>{t.home}</button>
+            <button>{t.services}</button>
+            <button>{t.tracker}</button>
+            <button>{t.gov}</button>
           </nav>
           <div className="flex items-center gap-3">
-            <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value as 'en' | 'hi')}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+            >
               <option value="en">English</option>
               <option value="hi">हिंदी</option>
             </select>
             {user ? (
-              <>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">{user.name}</span>
-                <button
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                  onClick={() => {
-                    setUser(null);
-                    window.localStorage.removeItem('shewadigital-user');
-                  }}
-                >
-                  {t.logout}
-                </button>
-              </>
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-2"
+                onClick={() => setUser(null)}
+              >
+                Logout
+              </button>
             ) : (
-              <button className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white">{t.login}</button>
+              <button className="rounded-lg bg-blue-700 px-4 py-2 text-white">{t.login}</button>
             )}
           </div>
         </div>
       </header>
 
       {!user ? (
-        <section className="mx-auto grid max-w-7xl gap-8 px-6 py-16 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="mx-auto grid max-w-7xl gap-8 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-8">
-            <div className="rounded-3xl bg-gradient-to-br from-blue-700 to-sky-500 p-8 text-white shadow-xl">
-              <p className="mb-3 text-sm uppercase tracking-[0.2em] text-blue-100">{t.welcome}</p>
-              <h1 className="text-4xl font-bold leading-tight">{t.description}</h1>
-            </div>
+            <div className="rounded-3xl bg-gradient-to-br from-blue-700 to-cyan-500 p-8 text-white shadow-xl">
+              <p className="text-sm uppercase tracking-[0.3em] text-blue-100">AI Document Assistant</p>
+              <h1 className="mt-4 text-4xl font-bold leading-tight">{t.subtitle}</h1>
+              <p className="mt-5 max-w-lg text-blue-100">{t.support}</p>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {['AI form fill', 'Live tracking', 'Government approval'].map((item) => (
-                <div key={item} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="mb-3 h-10 w-10 rounded-xl bg-blue-100 text-center text-xl leading-10 text-blue-700">✓</div>
-                  <h3 className="text-lg font-semibold">{item}</h3>
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <Sparkles className="mb-2" />
+                  <div className="font-semibold">AI Fill</div>
                 </div>
-              ))}
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <FileText className="mb-2" />
+                  <div className="font-semibold">OCR</div>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <ShieldCheck className="mb-2" />
+                  <div className="font-semibold">Approval</div>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-md">
             <div className="mb-5 flex gap-2 rounded-xl bg-slate-100 p-1">
               <button
-                className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium ${authMode === 'login' ? 'bg-white shadow' : ''}`}
-                onClick={() => setAuthMode('login')}
+                className={`flex-1 rounded-xl px-4 py-2 font-medium ${mode === 'login' ? 'bg-white shadow' : ''}`}
+                onClick={() => setMode('login')}
               >
                 {t.login}
               </button>
               <button
-                className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium ${authMode === 'register' ? 'bg-white shadow' : ''}`}
-                onClick={() => setAuthMode('register')}
+                className={`flex-1 rounded-xl px-4 py-2 font-medium ${mode === 'register' ? 'bg-white shadow' : ''}`}
+                onClick={() => setMode('register')}
               >
                 {t.register}
               </button>
             </div>
 
-            {authMode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <label className="block text-sm font-medium">Email
-                  <input value={loginData.email} onChange={(e) => setLoginData({ ...loginData, email: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+            {mode === 'login' ? (
+              <form onSubmit={onLogin} className="space-y-4">
+                <label className="block text-sm font-medium">
+                  Email
+                  <input
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </label>
-                <label className="block text-sm font-medium">Password
-                  <input type="password" value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                <label className="block text-sm font-medium">
+                  Password
+                  <input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </label>
-                <button type="submit" className="w-full rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white">{t.login}</button>
+                <button className="w-full rounded-xl bg-blue-700 px-4 py-3 text-white font-semibold" type="submit">
+                  {t.login}
+                </button>
               </form>
             ) : (
-              <form onSubmit={handleRegister} className="space-y-4">
-                <label className="block text-sm font-medium">Full name
-                  <input value={registerData.name} onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+              <form onSubmit={onRegister} className="space-y-4">
+                <label className="block text-sm font-medium">
+                  Full Name
+                  <input
+                    value={registerForm.name}
+                    onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </label>
-                <label className="block text-sm font-medium">Email
-                  <input value={registerData.email} onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                <label className="block text-sm font-medium">
+                  Email
+                  <input
+                    value={registerForm.email}
+                    onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </label>
-                <label className="block text-sm font-medium">Phone
-                  <input value={registerData.phone} onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                <label className="block text-sm font-medium">
+                  Phone
+                  <input
+                    value={registerForm.phone}
+                    onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </label>
-                <label className="block text-sm font-medium">Password
-                  <input type="password" value={registerData.password} onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
+                <label className="block text-sm font-medium">
+                  Password
+                  <input
+                    type="password"
+                    value={registerForm.password}
+                    onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  />
                 </label>
-                <label className="block text-sm font-medium">Aadhaar
-                  <input value={registerData.aadhaar} onChange={(e) => setRegisterData({ ...registerData, aadhaar: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
-                </label>
-                <label className="block text-sm font-medium">Address
-                  <input value={registerData.address} onChange={(e) => setRegisterData({ ...registerData, address: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
-                </label>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block text-sm font-medium">State
-                    <input value={registerData.state} onChange={(e) => setRegisterData({ ...registerData, state: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
-                  </label>
-                  <label className="block text-sm font-medium">District
-                    <input value={registerData.district} onChange={(e) => setRegisterData({ ...registerData, district: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" />
-                  </label>
-                </div>
-                <button type="submit" className="w-full rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white">{t.register}</button>
+                <button className="w-full rounded-xl bg-blue-700 px-4 py-3 text-white font-semibold" type="submit">
+                  {t.register}
+                </button>
               </form>
             )}
 
-            {message && <div className="mt-5 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-700">{message}</div>}
+            {message && <div className="mt-4 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-700">{message}</div>}
           </div>
         </section>
       ) : (
-        <section className="mx-auto max-w-7xl px-6 py-10">
-          <div className="mb-8 grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm text-slate-500">{t.totalUsers}</div>
-              <div className="mt-2 text-3xl font-bold text-blue-700">{dashboard.totalUsers}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm text-slate-500">{t.totalApplications}</div>
-              <div className="mt-2 text-3xl font-bold text-blue-700">{dashboard.totalApplications}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm text-slate-500">{t.pending}</div>
-              <div className="mt-2 text-3xl font-bold text-amber-600">{dashboard.pending}</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm text-slate-500">{t.approved}</div>
-              <div className="mt-2 text-3xl font-bold text-emerald-600">{dashboard.approved}</div>
-            </div>
-          </div>
-
-          <div className="grid gap-8 xl:grid-cols-[0.9fr_1.9fr]">
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-8 xl:grid-cols-[0.8fr_1.8fr]">
             <aside className="space-y-6">
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-4 text-xl font-bold">{user.role === 'government' ? t.adminPortal : t.citizenPortal}</h3>
-                <div className="space-y-3 text-sm text-slate-600">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="rounded-full bg-blue-100 p-2 text-blue-700"><User size={18} /></div>
+                  <h3 className="text-xl font-bold">Profile</h3>
+                </div>
+                <div className="space-y-2 text-sm text-slate-600">
                   <div><span className="font-medium text-slate-900">Name:</span> {user.name}</div>
                   <div><span className="font-medium text-slate-900">Email:</span> {user.email}</div>
-                  <div><span className="font-medium text-slate-900">Phone:</span> {user.phone}</div>
-                  <div><span className="font-medium text-slate-900">Aadhaar:</span> {user.aadhaar}</div>
+                  <div><span className="font-medium text-slate-900">Role:</span> {user.role}</div>
                 </div>
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h4 className="mb-4 text-lg font-bold">{t.government}</h4>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="rounded-full bg-indigo-100 p-2 text-indigo-700"><Building2 size={18} /></div>
+                  <h3 className="text-xl font-bold">Government Office</h3>
+                </div>
                 <div className="space-y-2 text-sm text-slate-600">
-                  <div><span className="font-medium text-slate-900">Office:</span> {govtProfile.officeName}</div>
-                  <div><span className="font-medium text-slate-900">Department:</span> {govtProfile.orgName}</div>
-                  <div><span className="font-medium text-slate-900">Location:</span> {govtProfile.officeLocation}</div>
-                  <div><span className="font-medium text-slate-900">Email:</span> {govtProfile.email}</div>
+                  <div><span className="font-medium text-slate-900">Office:</span> State Service Portal</div>
+                  <div><span className="font-medium text-slate-900">Department:</span> Digital Governance Division</div>
+                  <div><span className="font-medium text-slate-900">Location:</span> Patna, Bihar</div>
                 </div>
               </div>
             </aside>
 
             <div className="space-y-8">
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-5 text-xl font-bold">{t.service}</h3>
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="rounded-full bg-cyan-100 p-2 text-cyan-700"><ClipboardList size={18} /></div>
+                  <h3 className="text-xl font-bold">{t.services}</h3>
+                </div>
+
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {services.map((service) => (
                     <button
@@ -479,7 +374,7 @@ export default function HomePage() {
 
                 {selectedService && (
                   <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                    <h4 className="text-lg font-semibold">{selectedService.name}</h4>
+                    <h4 className="text-xl font-semibold">{selectedService.name}</h4>
                     <p className="mt-2 text-sm text-slate-600">{selectedService.eligibility}</p>
 
                     <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -487,8 +382,8 @@ export default function HomePage() {
                         <label key={doc} className="block text-sm font-medium text-slate-700">
                           {doc}
                           <input
-                            value={appForm[doc] ?? ''}
-                            onChange={(e) => setAppForm({ ...appForm, [doc]: e.target.value })}
+                            value={formData[doc] || ''}
+                            onChange={(e) => setFormData({ ...formData, [doc]: e.target.value })}
                             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
                           />
                         </label>
@@ -500,74 +395,53 @@ export default function HomePage() {
                         Upload documents
                         <input type="file" multiple onChange={handleUpload} className="mt-2 block w-full text-sm text-slate-500" />
                       </label>
-                      {uploadFiles.length > 0 && (
+
+                      {uploads.length > 0 && (
                         <ul className="mt-3 space-y-1 text-sm text-slate-600">
-                          {uploadFiles.map((file) => <li key={file.path}>• {file.name}</li>)}
+                          {uploads.map((file) => (
+                            <li key={file.path}>• {file.name}</li>
+                          ))}
                         </ul>
                       )}
                     </div>
 
-                    <button onClick={submitApplication} className="mt-6 rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white">{t.submit}</button>
+                    <button
+                      onClick={handleSubmitApplication}
+                      className="mt-6 rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white"
+                    >
+                      Submit Application
+                    </button>
                   </div>
                 )}
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-5 text-xl font-bold">{t.myApplications}</h3>
-                <div className="space-y-4">
-                  {visibleApps.length === 0 ? (
-                    <p className="text-sm text-slate-500">{t.noApplication}</p>
-                  ) : (
-                    visibleApps.map((app) => (
-                      <div key={app.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-lg font-semibold">{app.serviceName}</div>
-                            <div className="text-xs text-slate-500">{app.id}</div>
-                          </div>
-                          <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">{statusLabels[app.status]}</span>
-                        </div>
-                        <div className="mt-3 text-sm text-slate-600">
-                          {app.history.map((entry, index) => (
-                            <div key={`${entry.status}-${index}`} className="border-t border-slate-200 pt-2 mt-2">
-                              <div>{entry.status}</div>
-                              <div className="text-xs">{entry.note}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="rounded-full bg-emerald-100 p-2 text-emerald-700"><CheckCircle2 size={18} /></div>
+                  <h3 className="text-xl font-bold">Application Tracker</h3>
                 </div>
-              </div>
 
-              {user.role === 'government' && (
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="mb-5 text-xl font-bold">{t.allApplications}</h3>
-                  <div className="space-y-4">
-                    {applications.length === 0 ? (
-                      <p>{t.noApplication}</p>
-                    ) : (
-                      applications.map((app) => (
-                        <div key={app.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div>
-                              <div className="font-semibold">{app.serviceName}</div>
-                              <div className="text-xs text-slate-500">{app.userEmail}</div>
-                            </div>
-                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">{statusLabels[app.status]}</span>
-                          </div>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <button onClick={() => adminAction(app.id, 'in_process')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">In process</button>
-                            <button onClick={() => adminAction(app.id, 'approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm text-white">Approve</button>
-                            <button onClick={() => adminAction(app.id, 'rejected')} className="rounded-lg bg-rose-600 px-3 py-2 text-sm text-white">Reject</button>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                <div className="space-y-4">
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">Income Certificate</div>
+                        <div className="text-xs text-slate-500">APP-1001</div>
+                      </div>
+                      <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">Pending</span>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">PAN Card</div>
+                        <div className="text-xs text-slate-500">APP-1002</div>
+                      </div>
+                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">In Process</span>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </section>

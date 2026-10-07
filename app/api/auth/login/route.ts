@@ -1,18 +1,29 @@
 import { NextResponse } from 'next/server';
-import { ensureDataFiles, readUsers } from '@/lib/data';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 export async function POST(req: Request) {
-  await ensureDataFiles();
-  const { email, password } = await req.json();
-  const users = await readUsers();
-  const user = users.find(
-    (u) => u.email.toLowerCase() === String(email).toLowerCase() && u.password === String(password)
-  );
+  const body = await req.json();
 
-  if (!user) {
-    return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: body.email,
+    password: body.password
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 401 });
   }
 
-  const { password: _password, ...safeUser } = user;
-  return NextResponse.json({ user: safeUser });
+  return NextResponse.json({
+    user: {
+      id: data.user.id,
+      name: data.user.user_metadata?.name || 'User',
+      email: data.user.email,
+      role: 'USER'
+    }
+  });
 }

@@ -1,37 +1,39 @@
 import { NextResponse } from 'next/server';
-import { ensureDataFiles, readUsers, writeUsers } from '@/lib/data';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 export async function POST(req: Request) {
-  await ensureDataFiles();
-  const payload = await req.json();
-  const { name, email, phone, password, aadhaar, address, state, district } = payload;
+  const body = await req.json();
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ message: 'Name, email and password are required.' }, { status: 400 });
+  const { data, error } = await supabase.auth.signUp({
+    email: body.email,
+    password: body.password,
+    options: {
+      data: {
+        name: body.name,
+        phone: body.phone,
+        aadhaar: body.aadhaar,
+        address: body.address,
+        state: body.state,
+        district: body.district
+      }
+    }
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const users = await readUsers();
-  const exists = users.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
-
-  if (exists) {
-    return NextResponse.json({ message: 'User already exists.' }, { status: 409 });
-  }
-
-  const user = {
-    id: `user-${Date.now()}`,
-    name,
-    email,
-    phone: phone || '',
-    aadhaar: aadhaar || '',
-    address: address || '',
-    state: state || '',
-    district: district || '',
-    password,
-    role: 'user'
-  };
-
-  users.push(user);
-  await writeUsers(users);
-  const { password: _password, ...safeUser } = user;
-  return NextResponse.json({ user: safeUser, message: 'Registration successful.' }, { status: 201 });
+  return NextResponse.json({
+    user: {
+      id: data.user?.id,
+      name: data.user?.user_metadata?.name || body.name,
+      email: data.user?.email,
+      role: 'USER'
+    }
+  }, { status: 201 });
 }

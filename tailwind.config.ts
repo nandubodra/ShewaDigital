@@ -1,3 +1,4 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,8 +9,8 @@ module.exports = {
     extend: {
       colors: {
         primary: '#1d4ed8',
-        accent: '#f59e0b',
-        slatebg: '#f8fafc'
+        brand: '#0f172a',
+        accent: '#f59e0b'
       }
     }
   },

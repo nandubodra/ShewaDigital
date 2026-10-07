@@ -3,5 +3,5 @@ node_modules
 out
 .env.local
 .env
+public/uploads
 .DS_Store
-uploads

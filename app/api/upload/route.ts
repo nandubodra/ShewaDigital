@@ -1,21 +1,24 @@
-import { mkdir, writeFile } from 'fs/promises';
 import { NextResponse } from 'next/server';
+import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 
 export async function POST(req: Request) {
   const formData = await req.formData();
   const files = formData.getAll('files');
+
+  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+  await mkdir(uploadDir, { recursive: true });
+
   const saved: Array<{ name: string; path: string }> = [];
 
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  await mkdir(uploadsDir, { recursive: true });
+  for (const file of files) {
+    const f = file as File;
+    const buffer = Buffer.from(await f.arrayBuffer());
+    const safeName = `${Date.now()}-${f.name.replace(/\s+/g, '-')}`;
+    const target = path.join(uploadDir, safeName);
 
-  for (const item of files) {
-    if (typeof item === 'string' || !('name' in item) || !('arrayBuffer' in item)) continue;
-    const buffer = Buffer.from(await item.arrayBuffer());
-    const target = path.join(uploadsDir, item.name.replace(/\s+/g, '-'));
     await writeFile(target, buffer);
-    saved.push({ name: item.name, path: `/uploads/${path.basename(target)}` });
+    saved.push({ name: f.name, path: `/uploads/${safeName}` });
   }
 
   return NextResponse.json({ files: saved });
